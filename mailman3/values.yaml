@@ -1,0 +1,80 @@
+# Default values for mailman3.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# These are the settings that you MUST change before deploying:
+# Initial Settings for the admin account:
+#admin:
+#  username: mailadmin
+#  email: user@example.org
+#
+# some keys have to be provided...
+#hyperkittyApiKey: supersecret
+#djangoSecretKey: supersecret
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+core:
+  image:
+    repository: maxking/mailman-core
+  podAnnotations: {}
+  podSecurityContext: {}
+  # fsGroup: 2000
+  securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  persistence:
+    size: 100Gi
+    accessMode: ReadWriteOnce
+
+web:
+  image:
+    repository: maxking/mailman-web
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  persistence:
+    size: 100Gi
+    accessMode: ReadWriteOnce
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: false
+  tls: false
+  annotations:
+    # use NGINX Ingress Controller
+    #kubernetes.io/ingress.class: "nginx"
+    # use Cert-Manager for LetsEncrypt Certificates
+    #cert-manager.io/issuer: "letsencrypt-prod"
+  host: mailman3.example.org
+
+
+
+
+

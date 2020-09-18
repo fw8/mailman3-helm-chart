@@ -1,0 +1,159 @@
+{{- $clusterDomain := default "cluster.local" .Values.clusterDomain}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mailman3.fullname" . }}-core
+  labels:
+    {{- include "mailman3.labels" . | nindent 4 }}
+    app.kubernetes.io/component: core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "mailman3.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: core
+  template:
+    metadata:
+    {{- with .Values.core.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "mailman3.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: core
+    spec:
+      {{- with .Values.core.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.core.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: core-data
+          persistentVolumeClaim:
+            claimName: {{ include "core.claimName" . }}
+      containers:
+        - name: mailman-core
+          securityContext:
+            {{- toYaml .Values.core.securityContext | nindent 12 }}
+          image: "{{ .Values.core.image.repository }}:{{ .Values.core.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.core.image.pullPolicy }}
+          env:
+            - name: HYPERKITTY_API_KEY
+              value: {{ .Values.hyperkittyApiKey }}
+            - name: HYPERKITTY_URL
+              value: http://{{ include "mailman3.fullname" . }}-web.{{ .Release.Namespace }}.svc.{{ $clusterDomain }}/hyperkitty
+            - name: MTA
+              value: postfix
+            - name: SMTP_HOST
+              value: {{ include "mailman3.fullname" . }}-core.{{ .Release.Namespace }}.svc.{{ $clusterDomain }}
+            - name: DATABASE_CLASS
+              value: mailman.database.sqlite.SQLiteDatabase
+            - name: DATABASE_URL
+              value: "sqlite:////opt/mailman/var/data/mailman.db"
+          ports:
+            - name: api
+              containerPort: 8001
+              protocol: TCP
+            - name: lmtp
+              containerPort: 8024
+              protocol: TCP
+#          livenessProbe:
+#            httpGet:
+#              path: /3.1/system/versions
+#              port: api
+#              httpHeaders:
+#              - name: Authorization
+#                value: cmVzdGFkbWluOnJlc3RwYXNz   # echo -n "restadmin:restpass" | base64
+#          readinessProbe:
+#            httpGet:
+#              path: /
+#              port: api
+          volumeMounts:
+            - name: core-data
+              mountPath: /opt/mailman
+          resources:
+            {{- toYaml .Values.core.resources | nindent 12 }}
+        - name: postfix
+          image: boky/postfix:latest
+          env:
+            - name: TZ
+              value: 'Europe/Berlin'
+            - name: INBOUND_DEBUGGING
+              value: '1'
+            - name: ALLOWED_SENDER_DOMAINS
+              value: "*"  # dummy wegen POSTFIX_smtpd_recipient_restrictions...
+#            - name: POSTFIX_myhostname
+#              value: {{ .Values.ingress.host | quote }}
+            - name: POSTFIX_append_at_myorigin
+              value: "no"
+            - name: POSTFIX_append_dot_mydomain
+              value: "no"
+            - name: POSTFIX_recipient_delimiter
+              value: "+"
+            - name: POSTFIX_unknown_local_recipient_reject_code
+              value: "550"
+            - name: POSTFIX_owner_request_special
+              value: "no"
+            - name: POSTFIX_always_add_missing_headers
+              value: "yes"
+#            - name: POSTFIX_virtual_mailbox_maps
+#              value: regexp:/mailman/postfix_lmtp
+            - name: POSTFIX_transport_maps
+              value: regexp:/mailman/postfix_lmtp
+            - name: POSTFIX_local_recipient_maps
+              value: regexp:/mailman/postfix_lmtp
+            - name: POSTFIX_relay_domains
+              value: regexp:/mailman/postfix_domains
+            - name: POSTFIX_smtpd_recipient_restrictions
+              value: "permit_mynetworks,reject_non_fqdn_recipient,reject_unauth_destination"
+#              value: "reject_non_fqdn_recipient, reject_unknown_recipient_domain, check_sender_access static:OK, reject_unauth_destination"  # ugly... is there better way to avoid relaying denied?
+          ports:
+            - name: smtp
+              containerPort: 25
+              protocol: TCP
+          volumeMounts:
+            - name: core-data
+              subPath: var/data
+              mountPath: /mailman
+      {{- with .Values.core.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.core.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.core.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mailman3.fullname" . }}-core
+  labels:
+    {{- include "mailman3.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: rest
+      port: 8001
+      protocol: TCP
+    - name: lmtp
+      port: 8024
+      protocol: TCP
+    - name: smtp
+      port: 25
+      protocol: TCP
+  selector:
+    {{- include "mailman3.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: core
