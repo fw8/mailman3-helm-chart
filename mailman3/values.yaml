@@ -12,6 +12,8 @@
 #hyperkittyApiKey: supersecret
 #djangoSecretKey: supersecret
 
+hostname: lists.example.org
+
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -44,6 +46,7 @@ core:
   #   cpu: 100m
   #   memory: 128Mi
   persistence:
+    # persistence.existingClaim: ...
     size: 100Gi
     accessMode: ReadWriteOnce
 
@@ -58,6 +61,7 @@ web:
   affinity: {}
   resources: {}
   persistence:
+    # persistence.existingClaim: ...
     size: 100Gi
     accessMode: ReadWriteOnce
 
@@ -72,9 +76,3 @@ ingress:
     #kubernetes.io/ingress.class: "nginx"
     # use Cert-Manager for LetsEncrypt Certificates
     #cert-manager.io/issuer: "letsencrypt-prod"
-  host: mailman3.example.org
-
-
-
-
-

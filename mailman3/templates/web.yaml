@@ -49,7 +49,7 @@ spec:
               value: http://{{ include "mailman3.fullname" . }}-web.{{ .Release.Namespace }}.svc.{{ $clusterDomain }}:80
             {{- if .Values.ingress.enabled }}
             - name: SERVE_FROM_DOMAIN
-              value: {{ .Values.ingress.host | quote }}
+              value: {{ .Values.hostname | quote }}
             {{- end }}
             - name: DATABASE_URL
               value: sqlite://///opt/mailman-web-data/mailmanweb.db

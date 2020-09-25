@@ -39,6 +39,8 @@ spec:
           image: "{{ .Values.core.image.repository }}:{{ .Values.core.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.core.image.pullPolicy }}
           env:
+#            - name: TZ
+#              value: 'Europe/Berlin'
             - name: HYPERKITTY_API_KEY
               value: {{ .Values.hyperkittyApiKey }}
             - name: HYPERKITTY_URL
